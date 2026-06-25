@@ -60,3 +60,6 @@ Every dependency is permissive too — XGBoost and treelite/TL2cgen (Apache 2.0)
 (MIT), scikit-learn/NumPy (BSD) — and none is redistributed here, so nothing imposes
 additional constraints. (Earlier drafts licensed Northside under AGPL-3.0; that's
 superseded.)
+
+This repository is also a **defensive publication** — see [`DISCLOSURE.md`](DISCLOSURE.md)
+for the prior-art notice that keeps these methods free and unpatentable-by-others.
