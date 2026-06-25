@@ -8,9 +8,10 @@
 
 ## TL;DR
 
-- **Best original method (clean IP):** **Rapid Lightning v3 — head-aware.**
-- **Best accuracy / most rigorously validated / most publication-ready:** **Northside (v4)** — but **AGPL-3.0** because it bundles XGBoost.
+- **Best original method (XGBoost-free):** **Rapid Lightning v3 — head-aware.**
+- **Best accuracy / most rigorously validated / most publication-ready:** **Northside (v4)** — adds XGBoost as a second expert (a permissive Apache-2.0 dependency, not bundled).
 - v3 and Northside are **not competitors — they're a stack.** Northside *contains* v3's head-aware GP as one of its two experts.
+- **License:** the whole project is **Apache 2.0** (permissive + patent grant) — see [`LICENSE`](LICENSE). The earlier AGPL-3.0 first-pass on Northside is superseded.
 - The other four notebooks are supporting cast: v1/v2 (foundational, superseded), XGForge (a reusable tool), symbolic_regression_v9 (reference research / negative result).
 
 ---
@@ -20,7 +21,7 @@
 | Notebook | One-line identity | Engine / deps | Self-contained? | Status |
 |---|---|---|---|---|
 | `methods/rapid_lightning_v3.ipynb` | **Head-aware** GP — members evolved as *signal generators* for an LR head | Pure NumPy + scikit-learn (XGBoost optional, baseline only) | ✅ Yes (Colab top-to-bottom) | **Best original method** |
-| `methods/northside.ipynb` | **v4** — sparsely-gated MoE: head-aware GP **+** XGBoost, joined by a competence gate | NumPy + XGBoost + LightGBM + treelite/tl2cgen | ✅ Yes (needs the deps) | **Best accuracy; AGPL-3.0** |
+| `methods/northside.ipynb` | **v4** — sparsely-gated MoE: head-aware GP **+** XGBoost, joined by a competence gate | NumPy + XGBoost + LightGBM + treelite/tl2cgen | ✅ Yes (needs the deps) | **Best accuracy** (XGBoost = 2nd expert) |
 | `foundations/rapid_lightning_v1.ipynb` | Base production training pipeline: GP ensemble + LR head, accuracy-mode fitness | torch + numba | ✅ Embeds its 4 source files | Foundational, superseded on method |
 | `foundations/rapid_lightning_v2.ipynb` | Adds `predict_proba` output + the "Gorilla sweep" capacity finding | Imports external `src/rapid_lightning/` package | ❌ Needs external package | Foundational, superseded; fuzzing-project context |
 | `tooling/XGForge.ipynb` | XGBoost→C compiler (`xgforge`) + `forge_logistic` / `forge_lasso` | XGBoost | ✅ Yes | Reusable tool (powers Northside's "RLNF" mode) |
@@ -92,21 +93,38 @@ XGBoost, gated."
 
 ---
 
-## Licensing picture
+## Licensing
 
-- **v1, v2, v3** — original code; the **methods and algorithms are unencumbered**. v3's
-  only XGBoost touch is as an optional *baseline*, so the v3 method is genuinely
-  XGBoost-free.
-- **Northside (v4)** — released **AGPL-3.0**, *because it bundles XGBoost* (and uses
-  LightGBM / treelite for its hybrid + benchmarks). The notebook already documents a
-  dual-licensing path (AGPL for open use; a separate commercial license available).
-- **XGForge** — depends on XGBoost; it is the compiler that produces Northside's `RLNF`
-  fast-XGBoost mode.
+The entire project is released under the **Apache License 2.0** (a permissive,
+non-copyleft license) — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Previously only
+Northside carried a license, and it was a first-pass **AGPL-3.0** — now superseded across
+the repo.
 
-**Implication for publishing:** the clean-IP showcase path is **v3** (and the shared GP +
-AOT core beneath it). Northside is the strongest accuracy story but carries XGBoost's
-copyleft footprint — keep that boundary explicit. (Structural folder/license separation
-deferred to the rebuild; documented here for now.)
+**Why Apache 2.0**
+- **Permissive → maximum adoption.** Anyone, including commercial users, may use it
+  freely; downstream has no obligation to open their source.
+- **Explicit patent grant.** Apache 2.0 includes a patent license from contributors —
+  meaningful defensive cover for a novel method (head-aware GP) that MIT/BSD lack.
+- **Frictionless with the dependency stack.** XGBoost and treelite/TL2cgen are Apache
+  2.0, LightGBM is MIT, scikit-learn/NumPy are BSD — all permissive. **Nothing in the
+  stack imposes copyleft**, so no dependency forced this choice. (Common myth: depending
+  on Apache-2.0 XGBoost does *not* require your code to be Apache — permissive ≠ viral.)
+
+**What the XGBoost dependency actually requires:** nothing today. XGBoost is a
+separately-installed `pip` dependency, not redistributed here. *If* Northside ever ships
+XGBoost's binaries alongside its own, the only duty is to preserve XGBoost's license +
+NOTICE (attribution, not copyleft).
+
+**Method note (not a licensing distinction):** v3's *method* is genuinely XGBoost-free —
+it touches XGBoost only as an optional baseline to beat — whereas Northside *uses*
+XGBoost as its second expert. So a zero-third-party-ML-dependency build is the v3 path;
+but both notebooks are equally Apache 2.0.
+
+**Trade-off we accepted:** permissive gives up what AGPL would have bought — the ability
+to force downstream to stay open, and a dual-license "buy a commercial exception" model.
+For a first public release aimed at adoption, that's the right call.
+
+> Not legal advice — for real money/IP stakes, have counsel review.
 
 ---
 
@@ -123,7 +141,7 @@ hand-diverged copies.
 1. Extract a single shared core: `GP substrate + head-aware fitness + LR head + AOT (C) compiler`.
 2. Rebuild **v3 (head-aware)** on top of it as the clean-IP reference method.
 3. Rebuild **Northside** as `core + XGBoost expert + competence gate`, keeping the
-   AGPL/XGBoost boundary explicit.
+   XGBoost dependency boundary explicit (it's the one third-party-ML component).
 4. Land the v3 **production-AOT port at ship budget (N≥25)** — the open #1 lead.
 5. Build the public-facing demonstration notebooks on the rebuilt core.
 

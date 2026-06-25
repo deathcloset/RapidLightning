@@ -1,0 +1,11 @@
+Rapid Lightning
+Copyright 2026 Ben Johnston
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+Northside (the gated RL + XGBoost hybrid) depends, at build/runtime
+only, on separately-installed open-source packages — XGBoost (Apache
+2.0), LightGBM (MIT), scikit-learn and NumPy (BSD), and treelite/TL2cgen
+(Apache 2.0). None of those packages are redistributed in this
+repository, so they impose no additional licensing constraint here.

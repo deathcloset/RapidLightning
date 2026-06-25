@@ -15,8 +15,8 @@ beating) gradient-boosted trees on accuracy.
 
 | | Method | Why | Licensing |
 |---|---|---|---|
-| 🥇 *original* | **[Rapid Lightning v3 — head-aware](notebooks/methods/rapid_lightning_v3.ipynb)** | Trees evolved as *signal generators* for a linear head (not predictors). The strongest objective found; Pareto-dominates size-matched XGBoost on continuous data. | Clean / unencumbered |
-| 🥇 *accuracy* | **[Northside (v4)](notebooks/methods/northside.ipynb)** | Gated mixture of the head-aware GP + XGBoost. The only method here that *beats* XGBoost (conditionally), with rigorous CV + significance testing. | **AGPL-3.0** (bundles XGBoost) |
+| 🥇 *original* | **[Rapid Lightning v3 — head-aware](notebooks/methods/rapid_lightning_v3.ipynb)** | Trees evolved as *signal generators* for a linear head (not predictors). The strongest objective found; Pareto-dominates size-matched XGBoost on continuous data. | Apache 2.0 · method is XGBoost-free |
+| 🥇 *accuracy* | **[Northside (v4)](notebooks/methods/northside.ipynb)** | Gated mixture of the head-aware GP + XGBoost. The only method here that *beats* XGBoost (conditionally), with rigorous CV + significance testing. | Apache 2.0 · uses XGBoost (Apache 2.0) |
 
 These two are a **stack, not rivals** — Northside contains v3's head-aware GP as one of
 its experts. See [`RECORD.md`](RECORD.md) for the full reasoning, measured numbers, and
@@ -28,7 +28,7 @@ the licensing picture.
 notebooks/
   methods/        the two "best" — show these off
     rapid_lightning_v3.ipynb     head-aware GP (clean IP)
-    northside.ipynb              v4 gated GP+XGBoost hybrid (AGPL-3.0)
+    northside.ipynb              v4 gated GP+XGBoost hybrid
   foundations/    the base pipeline these grew from (superseded on method)
     rapid_lightning_v1.ipynb     GP+LR ensemble → AOT .so (torch+numba)
     rapid_lightning_v2.ipynb     adds predict_proba output + capacity findings
@@ -48,3 +48,15 @@ immediate constants, so a prediction is one function call with no opcode dispatc
 runtime stack, and no preprocessing step. The result is a single self-contained `.so`
 (no scikit-learn / XGBoost dependency at serve time) that a customer's request sees in
 tens to hundreds of nanoseconds.
+
+## License
+
+Released under the **Apache License 2.0** — a permissive, non-copyleft license chosen to
+maximize adoption and for its explicit **patent grant** (defensive cover for a novel
+method). Use it freely, including in commercial and closed-source products; just preserve
+the copyright/license notices. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+Every dependency is permissive too — XGBoost and treelite/TL2cgen (Apache 2.0), LightGBM
+(MIT), scikit-learn/NumPy (BSD) — and none is redistributed here, so nothing imposes
+additional constraints. (Earlier drafts licensed Northside under AGPL-3.0; that's
+superseded.)
