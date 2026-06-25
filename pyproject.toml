@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rapidlightning"
+version = "0.1.0"
+description = "Nanosecond-class tabular classification: head-aware genetic-programming ensembles that compile to a ~15 KB dependency-free C .so."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ben Johnston", email = "benjohnston@gmail.com" }]
+keywords = ["machine-learning", "tabular", "genetic-programming", "edge", "tinyml", "inference", "low-latency"]
+dependencies = [
+    "numpy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+# For the demos: baseline comparisons + plots. The core engine needs neither.
+demos = ["xgboost", "matplotlib", "pandas"]
+
+[project.urls]
+Homepage = "https://github.com/deathcloset/RapidLightningPublishing"
+
+[tool.setuptools]
+packages = ["rapidlightning"]
+
+# The C-compile path (rapidlightning.forge) requires a system gcc at runtime.

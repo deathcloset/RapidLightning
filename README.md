@@ -5,11 +5,27 @@ that compile to a **~15 KB, dependency-free C `.so`** and predict in **tens of
 nanoseconds** on a single CPU core — while staying competitive with (and sometimes
 beating) gradient-boosted trees on accuracy.
 
-> **Status: organizing.** This repo currently collects the six notebooks from a
-> chaotic, multi-context development process. The first job — sorting out what's what
-> and which methods are the "best" — is done and written up in **[`RECORD.md`](RECORD.md)**.
-> Next we extract a shared core and rebuild the best version(s), then build public
-> demonstration notebooks.
+> **Status: rebuilding.** The six original notebooks are sorted out and written up in
+> **[`RECORD.md`](RECORD.md)**. The best method (v3 head-aware) is now extracted into a
+> clean, installable package — **[`rapidlightning/`](rapidlightning/)** — with the first
+> runnable demo in **[`demos/`](demos/)**. Next: more demos (robotics, aerospace) and the
+> Northside hybrid on the shared core.
+
+## Quickstart
+
+```python
+from rapidlightning import RapidLightningClassifier
+
+clf = RapidLightningClassifier(n_members=10, generations=20).fit(X_train, y_train)
+proba = clf.predict_proba(X_test)[:, 1]      # head-aware GP + logistic head
+
+fast = clf.compile()                          # -> a ~15 KB, dependency-free C .so
+fast.predict_proba_one(x)                     # single-row inference in tens of nanoseconds
+fast.benchmark_ns()                           # measured, timed inside C
+```
+
+Install (editable, from a clone): `pip install -e ".[demos]"` · needs a system `gcc` for the compile step.
+See **[`demos/01_sensors_core.ipynb`](demos/01_sensors_core.ipynb)** for the full showcase — train, benchmark vs XGBoost, compile, and *measure* the latency, all with baked-in outputs.
 
 ## The two best methods
 
@@ -25,6 +41,9 @@ the licensing picture.
 ## Repository layout
 
 ```
+rapidlightning/   the clean, installable core (head-aware engine + AOT-to-C compiler)
+demos/
+  01_sensors_core.ipynb        the domain-neutral showcase (RL vs XGBoost + the 15 KB / ~45 ns .so)
 notebooks/
   methods/        the two "best" — show these off
     rapid_lightning_v3.ipynb     head-aware GP (clean IP)
