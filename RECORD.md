@@ -1,5 +1,13 @@
 # Rapid Lightning — the record
 
+> ⚠️ **Superseded.** This file's "best methods" verdict (v3 / Northside *beat* XGBoost) was
+> written *before* the rigorous benchmark. That benchmark — see
+> **[`notebooks/methods/rapid_lightning_investigation.ipynb`](notebooks/methods/rapid_lightning_investigation.ipynb)** —
+> found that the GP methods **do not beat tuned gradient-boosted trees**, and that the
+> apparent win was largely the baselines overfitting. This document is kept for provenance
+> (an accurate account of what each *notebook* is); its accuracy *claims* are retracted in
+> favor of the investigation.
+
 > Purpose: after a chaotic, multi-context development process, this file is the
 > single canonical account of **what each notebook actually is**, **which methods
 > are the "best,"** and **what the licensing picture looks like** — written down so

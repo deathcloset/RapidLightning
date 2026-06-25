@@ -1,15 +1,21 @@
 # ⚡ Rapid Lightning
 
-A family of **nanosecond-class tabular classifiers**. Genetic-programming ensembles
-that compile to a **~15 KB, dependency-free C `.so`** and predict in **tens of
-nanoseconds** on a single CPU core — while staying competitive with (and sometimes
-beating) gradient-boosted trees on accuracy.
+**An honest investigation of genetic-programming (GP) ensembles for tabular classification** —
+a novel method, a from-scratch compile-to-C toolchain, and a rigorous benchmark.
 
-> **Status: rebuilding.** The six original notebooks are sorted out and written up in
-> **[`RECORD.md`](RECORD.md)**. The best method (v3 head-aware) is now extracted into a
-> clean, installable package — **[`rapidlightning/`](rapidlightning/)** — with the first
-> runnable demo in **[`demos/`](demos/)**. Next: more demos (robotics, aerospace) and the
-> Northside hybrid on the shared core.
+Told straight: these GP ensembles compile to a **~15 KB, dependency-free C `.so`** with
+tens-of-nanoseconds inference — clean, fun engineering — **but under rigorous evaluation
+they do not beat properly-tuned gradient-boosted trees** on tabular classification. A small
+complementary signal survives on a few small datasets; it's too marginal to matter, and that
+regime is now owned by tabular foundation models (TabPFN). The full, cited writeup is the centerpiece:
+
+> ### 📓 [The investigation notebook →](notebooks/methods/rapid_lightning_investigation.ipynb)
+> 16 OpenML datasets · tuned baselines · repeated CV + paired significance — every number
+> reproducible via [`benchmarks/gp_vs_gbdt.py`](benchmarks/gp_vs_gbdt.py). A clean, scoped negative result.
+
+**Why publish a negative?** Because the rigor *is* the contribution: a hopeful idea, built
+end-to-end, stress-tested against the right baselines, and reported honestly when it didn't
+pan out — including catching that an early "win" was just the baseline overfitting.
 
 ## Quickstart
 
@@ -27,37 +33,49 @@ fast.benchmark_ns()                           # measured, timed inside C
 Install (editable, from a clone): `pip install -e ".[demos]"` · needs a system `gcc` for the compile step.
 See **[`demos/01_sensors_core.ipynb`](demos/01_sensors_core.ipynb)** for the full showcase — train, benchmark vs XGBoost, compile, and *measure* the latency, all with baked-in outputs.
 
-## The two best methods
+## The finding
 
-| | Method | Why | Licensing |
-|---|---|---|---|
-| 🥇 *original* | **[Rapid Lightning v3 — head-aware](notebooks/methods/rapid_lightning_v3.ipynb)** | Trees evolved as *signal generators* for a linear head (not predictors). The strongest objective found; Pareto-dominates size-matched XGBoost on continuous data. | Apache 2.0 · method is XGBoost-free |
-| 🥇 *accuracy* | **[Northside (v4)](notebooks/methods/northside.ipynb)** | Gated mixture of the head-aware GP + XGBoost. The only method here that *beats* XGBoost (conditionally), with rigorous CV + significance testing. | Apache 2.0 · uses XGBoost (Apache 2.0) |
+Across 16 OpenML datasets, repeated CV, and paired significance testing **against tuned
+(early-stopped, regularized) GBDT baselines**:
 
-These two are a **stack, not rivals** — Northside contains v3's head-aware GP as one of
-its experts. See [`RECORD.md`](RECORD.md) for the full reasoning, measured numbers, and
-the licensing picture.
+- **Neither GP objective beats a tuned GBDT stack.** *v1* (members as predictors) adds a
+  small, significant complementary signal on a few *small* datasets (mean **+0.002 AUC**,
+  up to +0.015 on ionosphere); *v3* ("head-aware", once thought best) adds **essentially
+  nothing**.
+- **The compile-to-C toolchain isn't novel** — [treelite](https://treelite.readthedocs.io/),
+  [m2cgen](https://github.com/BayesWitnesses/m2cgen), [lleaves](https://siboehm.com/articles/21/lleaves),
+  and [Hummingbird](https://github.com/microsoft/hummingbird) have done it for years; a tuned
+  GBDT compiles to fast C just as well.
+- **An early "win" was a mirage:** v1 beating GBDTs by +0.03 on small data was the *default*
+  GBDTs overfitting — regularize them and it collapses to non-significance.
+
+Full reasoning, numbers, and citations in the **[investigation notebook](notebooks/methods/rapid_lightning_investigation.ipynb)**.
+The earlier [`RECORD.md`](RECORD.md) (which crowned "best methods" *before* this benchmark) is
+kept for provenance but is **superseded** by the investigation.
 
 ## Repository layout
 
 ```
-rapidlightning/   the clean, installable core (head-aware engine + AOT-to-C compiler)
-demos/
-  01_sensors_core.ipynb        the domain-neutral showcase (RL vs XGBoost + the 15 KB / ~45 ns .so)
-  02_droids_control_loop.ipynb robotics: RL balances a cart-pole — speed as a control capability
-  03_spaceships_flight.ipynb   aerospace: tiny, deterministic, auditable inference for flight hardware
+rapidlightning/   the clean, installable core (GP engine + AOT-to-C compiler)
+benchmarks/
+  gp_vs_gbdt.py      the deep, honest benchmark (tuned baselines · CV · paired significance)
+  results/           per-dataset results the investigation notebook reads
 notebooks/
-  methods/        the two "best" — show these off
-    rapid_lightning_v3.ipynb     head-aware GP (clean IP)
-    northside.ipynb              v4 gated GP+XGBoost hybrid
-  foundations/    the base pipeline these grew from (superseded on method)
-    rapid_lightning_v1.ipynb     GP+LR ensemble → AOT .so (torch+numba)
+  methods/
+    rapid_lightning_investigation.ipynb   ←  THE WRITEUP — start here
+    rapid_lightning_v3.ipynb     head-aware GP (the "signal-generator" objective)
+    northside.ipynb              v4 gated GP + XGBoost hybrid
+  foundations/
+    rapid_lightning_v1.ipynb     the predictor-objective GP (the variant that fared best)
     rapid_lightning_v2.ipynb     adds predict_proba output + capacity findings
   tooling/
-    XGForge.ipynb                XGBoost→C compiler (reusable deployment infra)
+    XGForge.ipynb                tree→C compiler (a niche reimplementation of treelite/m2cgen)
   research/
-    symbolic_regression_v9.ipynb GP-evolution-speedup study (honest negative result)
-RECORD.md         the canonical account of what each notebook is + the "best" verdict
+    symbolic_regression_v9.ipynb GP-evolution-speedup study (another honest negative)
+demos/            early illustrative notebooks — NOTE: their speed comparisons predate the
+                  honest benchmark and used XGBoost's slow Python path; see the investigation
+                  for the fair, compiled-vs-compiled story
+RECORD.md         early "best methods" account — superseded by the investigation
 README.md         you are here
 ```
 
