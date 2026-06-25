@@ -44,6 +44,7 @@ the licensing picture.
 rapidlightning/   the clean, installable core (head-aware engine + AOT-to-C compiler)
 demos/
   01_sensors_core.ipynb        the domain-neutral showcase (RL vs XGBoost + the 15 KB / ~45 ns .so)
+  02_droids_control_loop.ipynb robotics: RL balances a cart-pole — speed as a control capability
 notebooks/
   methods/        the two "best" — show these off
     rapid_lightning_v3.ipynb     head-aware GP (clean IP)
