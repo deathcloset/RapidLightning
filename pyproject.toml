@@ -21,7 +21,7 @@ dependencies = [
 demos = ["xgboost", "matplotlib", "pandas"]
 # For the rigorous benchmark: compiled baselines (XGForge is in-package; treelite
 # is the external SOTA) + significance testing.
-benchmark = ["xgboost", "pandas", "scipy", "treelite", "tl2cgen"]
+benchmark = ["xgboost", "lightgbm", "pandas", "scipy", "treelite", "tl2cgen"]
 
 [project.urls]
 Homepage = "https://github.com/deathcloset/RapidLightningPublishing"
