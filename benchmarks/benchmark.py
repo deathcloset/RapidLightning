@@ -15,7 +15,7 @@ batch-amortized).
 
 Knobs via env: BENCH_FOLDS, BENCH_REPEATS, BENCH_MEMBERS, BENCH_GENS, BENCH_DATASETS.
 """
-import os, time, warnings, numpy as np
+import os, time, json, warnings, numpy as np
 warnings.filterwarnings("ignore")
 from sklearn.model_selection import RepeatedStratifiedKFold, train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -138,10 +138,22 @@ def latency_size(X, y):
                 rlboost_ns=rl_ns + xf_ns, rlboost_kb=fast.size_kb + xfc.size_kb)
 
 
+CACHE = os.environ.get("BENCH_CACHE", "/tmp/claude-0/-home-user-RapidLightningPublishing/15124e30-91ee-54bd-9547-38675601fc85/scratchpad/bench_cache.jsonl")
+
 if __name__ == "__main__":
     print(f"config: {FOLDS}-fold x{REPEATS} | RL members={MEMBERS} gens={GENS} | datasets={list(DATASETS)}\n", flush=True)
+    done = {}
+    if os.path.exists(CACHE):
+        for line in open(CACHE):
+            r = json.loads(line); done[r["name"]] = r
+        if done: print(f"[resuming — {len(done)} datasets already cached: {list(done)}]\n", flush=True)
     acc_rows, lat_rows = [], []
     for name, src in DATASETS.items():
+        if name in done:
+            r = done[name]
+            acc_rows.append((name, r["rl"], r["xg"], r["mo"], r["v"])); lat_rows.append((name, r["lat"]))
+            print(f"{name:<15} (cached) | RL={r['rl']:.4f} XGB={r['xg']:.4f} RLBoost={r['mo']:.4f} | {r['v']}", flush=True)
+            continue
         data = load(name, src)
         if data is None: continue
         X, y = data
@@ -150,8 +162,11 @@ if __name__ == "__main__":
         lat = latency_size(X, y)
         v = verdict(mo, xg)
         print(f"{name:<15} n={len(X):>5} pos={y.mean():.2f} | RL={rl.mean():.4f} XGB={xg.mean():.4f} RLBoost={mo.mean():.4f} | RLBoost vs XGB: {v}  [{time.time()-t0:.0f}s]", flush=True)
-        acc_rows.append((name, rl.mean(), xg.mean(), mo.mean(), v))
-        lat_rows.append((name, lat))
+        acc_rows.append((name, rl.mean(), xg.mean(), mo.mean(), v)); lat_rows.append((name, lat))
+        with open(CACHE, "a") as f:
+            f.write(json.dumps({"name": name, "n": len(X), "pos": float(y.mean()),
+                                "rl": float(rl.mean()), "xg": float(xg.mean()), "mo": float(mo.mean()),
+                                "v": v, "lat": lat}) + "\n")
 
     print("\n=== LATENCY / SIZE (single-row C ns unless noted; treelite = batch-amortized) ===", flush=True)
     print(f"{'dataset':<15}{'RL ns':>8}{'XGForge ns':>11}{'treelite ns*':>13}{'RLBoost ns':>12}{'RLBoost KB':>12}", flush=True)
