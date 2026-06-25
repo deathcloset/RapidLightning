@@ -17,7 +17,8 @@ Knobs via env: BENCH_FOLDS, BENCH_REPEATS, BENCH_MEMBERS, BENCH_GENS, BENCH_DATA
 """
 import os, time, warnings, numpy as np
 warnings.filterwarnings("ignore")
-from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.model_selection import RepeatedStratifiedKFold, train_test_split
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import fetch_openml, load_breast_cancer
@@ -79,15 +80,22 @@ def load(name, src):
 
 
 def cv_aucs(X, y):
+    """RLBoost = a leakage-free learned stack of the two experts. Within each
+    train fold, experts train on 80% and the meta-combiner is fit on the held-out
+    20%; all three are scored on the untouched test fold. The XGB and RL baselines
+    use the SAME 80% experts, so the comparison is apples-to-apples."""
     rl_a, xg_a, mo_a = [], [], []
     cvs = RepeatedStratifiedKFold(n_splits=FOLDS, n_repeats=REPEATS, random_state=0)
     for tr, te in cvs.split(X, y):
         Xtr, Xte, ytr, yte = X[tr], X[te], y[tr], y[te]
-        rl = RapidLightningClassifier(n_members=MEMBERS, generations=GENS, population=POP, seed=1).fit(Xtr, ytr)
-        xf = xgb.XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.08, random_state=1, verbosity=0).fit(Xtr, ytr)
-        p_rl = rl.predict_proba(Xte)[:, 1]
-        p_xg = xf.predict_proba(Xte)[:, 1]
-        p_mo = 0.5 * (p_rl + p_xg)                      # RLBoost = soft-MoE (leakage-free)
+        Xet, Xbv, yet, ybv = train_test_split(Xtr, ytr, test_size=0.25, random_state=0, stratify=ytr)
+        rl = RapidLightningClassifier(n_members=MEMBERS, generations=GENS, population=POP, seed=1).fit(Xet, yet)
+        xf = xgb.XGBClassifier(n_estimators=300, max_depth=6, learning_rate=0.08, random_state=1, verbosity=0).fit(Xet, yet)
+        p_rl, p_xg = rl.predict_proba(Xte)[:, 1], xf.predict_proba(Xte)[:, 1]
+        # learned combiner, fit only on the blend-holdout expert predictions
+        meta = LogisticRegression(max_iter=1000).fit(
+            np.c_[rl.predict_proba(Xbv)[:, 1], xf.predict_proba(Xbv)[:, 1]], ybv)
+        p_mo = meta.predict_proba(np.c_[p_rl, p_xg])[:, 1]
         rl_a.append(roc_auc_score(yte, p_rl)); xg_a.append(roc_auc_score(yte, p_xg)); mo_a.append(roc_auc_score(yte, p_mo))
     return np.array(rl_a), np.array(xg_a), np.array(mo_a)
 
