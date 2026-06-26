@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+
+# Compiled artifacts
+*.so
+*.o
+
+# Env
+.venv/
+venv/
+.DS_Store
