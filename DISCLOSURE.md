@@ -6,6 +6,9 @@
 **Canonical public location:** https://github.com/deathcloset/RapidLightningPublishing
 **License:** Apache License 2.0 (see [`LICENSE`](LICENSE))
 
+> **Staged, not yet in force.** This notice becomes prior art only once the
+> repository is made **public**; until then it is prepared but not published.
+
 ## Purpose
 
 This is a deliberate **defensive publication**. The methods, algorithms, and
@@ -39,6 +42,11 @@ reproducible measurements.
 4. **The supporting record** — the v1/v2 foundations, the XGForge tree→C compiler,
    and a genetic-programming research arc — is included for completeness and
    provenance.
+
+A rigorous, honest evaluation of these methods — which finds they **do not
+outperform tuned gradient-boosted trees** — is in
+[`notebooks/methods/rapid_lightning_investigation.ipynb`](notebooks/methods/rapid_lightning_investigation.ipynb).
+They are disclosed here as prior art regardless of competitive performance.
 
 ## Provenance
 

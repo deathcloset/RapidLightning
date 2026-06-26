@@ -6,7 +6,9 @@ dependency-free C `.so` predicting in tens of nanoseconds.
 
     from rapidlightning import RapidLightningClassifier
 
-See the demos/ folder for runnable showcases.
+A clean GP classifier + AOT-to-C compiler. For the honest benchmark — it does
+not outperform tuned gradient-boosted trees — see
+notebooks/methods/rapid_lightning_investigation.ipynb.
 """
 from .classifier import RapidLightningClassifier
 from .forge import CompiledPredictor

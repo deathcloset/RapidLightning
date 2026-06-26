@@ -17,6 +17,8 @@ regime is now owned by tabular foundation models (TabPFN). The full, cited write
 end-to-end, stress-tested against the right baselines, and reported honestly when it didn't
 pan out — including catching that an early "win" was just the baseline overfitting.
 
+> **Status: complete.** A concluded investigation, preserved as a reproducible record — not a work in progress.
+
 ## Quickstart
 
 ```python

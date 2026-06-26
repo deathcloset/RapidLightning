@@ -1,17 +1,21 @@
 """
-Rapid Lightning — honest, rigorous benchmark.
+Rapid Lightning — RLBoost MoE benchmark (earlier harness).
+
+⚠️  SUPERSEDED by `gp_vs_gbdt.py`, the definitive GP-vs-*tuned*-GBDT benchmark.
+This earlier harness compared an "RLBoost" soft-MoE against *default* (un-tuned)
+300-tree GBDT baselines. Once the baselines are regularized/early-stopped, the
+apparent win collapses — the corrected result (GP ensembles do not beat tuned
+GBDTs) is in `notebooks/methods/rapid_lightning_investigation.ipynb`. Kept for
+provenance of the investigation.
 
 Compares, on real tabular datasets with repeated stratified CV + paired
 significance testing:
   * Rapid Lightning (head-aware GP)            -> compiled .so
   * XGBoost                                     -> XGForge .so AND treelite/tl2cgen .so
-  * RLBoost (soft-MoE of the two experts)       -> the headline model
+  * RLBoost (soft-MoE of the two experts)       -> the (then-)headline model
 
-The claim under test: RLBoost matches-or-beats XGBoost on AUC (significantly,
-where there's headroom) at nanosecond-class single-row latency and a tiny
-footprint. Accuracy is the headline; latency/size are reported per artifact on
-its honest basis (RL/XGForge expose a single-row C entry point; treelite is
-batch-amortized).
+Accuracy is the headline; latency/size are reported per artifact on its honest
+basis (RL/XGForge expose a single-row C entry point; treelite is batch-amortized).
 
 Knobs via env: BENCH_FOLDS, BENCH_REPEATS, BENCH_MEMBERS, BENCH_GENS, BENCH_DATASETS.
 """
