@@ -15,6 +15,8 @@ import ctypes
 import tempfile
 import subprocess
 
+import numpy as np
+
 
 def _fmt_f(v):
     """Render a Python float as a valid, parenthesized C float literal."""
@@ -82,16 +84,20 @@ def compile_c(src, gcc_flags=('-O3', '-march=native', '-ffast-math')):
     so_path = os.path.join(d, "predict.so")
     with open(src_path, "w") as f:
         f.write(src)
-    subprocess.run(['gcc', *gcc_flags, '-shared', '-fPIC', '-o', so_path, src_path], check=True)
+    # -lm after the source: the code calls libm (expf, tanhf), and on glibc libm.so also
+    # pulls in libmvec for the vectorized variants gcc emits under -ffast-math
+    subprocess.run(['gcc', *gcc_flags, '-shared', '-fPIC', '-o', so_path, src_path, '-lm'], check=True)
     return so_path, src_path
 
 
-class CompiledPredictor:
-    """A loaded `.so`: nanosecond single-row inference, with in-C timing."""
+class CompiledSource:
+    """A loaded `.so` built from emitted C: nanosecond single-row inference, with
+    in-C timing. Any emitter that defines `predict_proba_one` + the timing helper
+    can be loaded this way."""
 
-    def __init__(self, members, scaler, lr, n_features):
+    def __init__(self, c_source, n_features):
         self.n_features = n_features
-        self.c_source = emit_c_source(members, scaler, lr, n_features)
+        self.c_source = c_source
         self.so_path, self.c_path = compile_c(self.c_source)
         self.size_kb = os.path.getsize(self.so_path) / 1024
         lib = ctypes.CDLL(self.so_path)
@@ -102,7 +108,6 @@ class CompiledPredictor:
         self._lib = lib
 
     def _ptr(self, x):
-        import numpy as np
         xx = np.ascontiguousarray(x, dtype=np.float32)
         return xx.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
 
@@ -111,12 +116,93 @@ class CompiledPredictor:
         return float(self._lib.predict_proba_one(self._ptr(x)))
 
     def predict_proba(self, X):
-        import numpy as np
         return np.array([self.predict_proba_one(row) for row in X], dtype=np.float64)
 
     def benchmark_ns(self, x=None, n_warmup=5000, n_iters=1_000_000):
         """Measured nanoseconds per single-row inference (timed inside C, no Python in the loop)."""
-        import numpy as np
         if x is None:
             x = np.zeros(self.n_features, dtype=np.float32)
         return float(self._lib.predict_proba_time_ns(self._ptr(x), n_warmup, n_iters))
+
+
+class CompiledPredictor(CompiledSource):
+    """A compiled GP ensemble (GP trees → standardize → logistic head → sigmoid)."""
+
+    def __init__(self, members, scaler, lr, n_features):
+        super().__init__(emit_c_source(members, scaler, lr, n_features), n_features)
+
+
+# ---- emitters for the gradient-trained generators (rapidlightning.gradgen) -----
+
+_ACT_C = {
+    "tanh": "tanhf({z})",
+    "relu": "fmaxf({z},0.0f)",
+    "softsign": "({z}/(1.0f+fabsf({z})))",
+}
+
+
+def _c_array(name, values):
+    return f"static const float {name}[{len(values)}] = {{" + ",".join(_fmt_f(v)[1:-1] for v in values) + "};"
+
+
+def emit_ridge_c(W, b, v, c, act, direct=False):
+    """Ridge generators act(w·x + b) → logistic head → sigmoid, as branchless C.
+    Weights live in static const arrays, stored transposed so the inner loop runs
+    across generators: under -O3 -march=native the matrix-vector product becomes
+    SIMD and the activation loop calls glibc's vector tanhf (libmvec). Any head
+    standardization is already folded into (v, c)."""
+    K, d = W.shape
+    vx, vh = (v[:d], v[d:]) if direct else (None, v)
+    lines = ["#include <math.h>", "#include <time.h>", "",
+             _c_array("WT", W.T.ravel()), _c_array("B", b), _c_array("V", vh)]
+    if direct:
+        lines.append(_c_array("VX", vx))
+    lines += ["", "float predict_proba_one(const float* X){",
+              f"    float z[{K}];",
+              f"    for(int k=0;k<{K};++k) z[k] = B[k];",
+              f"    for(int j=0;j<{d};++j){{",
+              f"        const float x = X[j]; const float* w = WT + j*{K};",
+              f"        for(int k=0;k<{K};++k) z[k] += w[k]*x;",
+              "    }",
+              f"    float s = {_fmt_f(c)};"]
+    if direct:
+        lines.append(f"    for(int j=0;j<{d};++j) s += VX[j]*X[j];")
+    lines += [f"    for(int k=0;k<{K};++k){{ s += V[k]*{_ACT_C[act].format(z='z[k]')}; }}",
+              "    return 1.0f/(1.0f+expf(-s));",
+              "}", _TIMING_C]
+    return "\n".join(lines)
+
+
+def emit_tuned_gp_c(forest, theta, v, c, mu, sd):
+    """Gradient-tuned GP trees (leaf weights, tuned constants, sigmoid-relaxed `lt`)
+    → standardize → logistic head → sigmoid, as straight-line C."""
+    nodes = forest.nodes
+
+    def emit(i):
+        kind, val, kids, p = nodes[i]
+        if kind == "x":
+            return f"({_fmt_f(theta[p])}*X[{val}])"
+        if kind == "c":
+            return _fmt_f(theta[p])
+        a = [emit(k) for k in kids]
+        if kind == "add":   return f"({a[0]}+{a[1]})"
+        if kind == "sub":   return f"({a[0]}-{a[1]})"
+        if kind == "mul":   return f"({a[0]}*{a[1]})"
+        if kind == "max":   return f"fmaxf({a[0]},{a[1]})"
+        if kind == "min":   return f"fminf({a[0]},{a[1]})"
+        if kind == "neg":   return f"(-({a[0]}))"
+        if kind == "abs":   return f"fabsf({a[0]})"
+        if kind == "clamp": return f"fminf(fmaxf({a[0]},0.0f),1.0f)"
+        if kind == "lt":
+            inv_tau = 1.0 / float(np.exp(theta[p]))
+            return f"(1.0f/(1.0f+expf(-({a[1]}-{a[0]})*{_fmt_f(inv_tau)})))"
+        return a[0]
+
+    lines = ["#include <math.h>", "#include <time.h>", "", "float predict_proba_one(const float* X){"]
+    terms = []
+    for k, root in enumerate(forest.roots):
+        lines.append(f"    float f{k} = (float)({emit(root)});")
+        terms.append(f"({_fmt_f(v[k] / sd[k])}*(f{k}-{_fmt_f(mu[k])}))")
+    lines.append(f"    float s = {_fmt_f(c)} + " + " + ".join(terms) + ";")
+    lines += ["    return 1.0f/(1.0f+expf(-s));", "}", _TIMING_C]
+    return "\n".join(lines)

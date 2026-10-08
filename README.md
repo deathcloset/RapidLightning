@@ -17,7 +17,9 @@ regime is now owned by tabular foundation models (TabPFN). The full, cited write
 end-to-end, stress-tested against the right baselines, and reported honestly when it didn't
 pan out — including catching that an early "win" was just the baseline overfitting.
 
-> **Status: complete.** A concluded investigation, preserved as a reproducible record — not a work in progress.
+> **Status: complete**, plus one follow-up (Oct 2026): [what if the generators are *trained* by gradient
+> instead of evolved?](notebooks/methods/gradient_signal_generators.ipynb) A concluded investigation,
+> preserved as a reproducible record — not a work in progress.
 
 ## Quickstart
 
@@ -55,16 +57,40 @@ Full reasoning, numbers, and citations in the **[investigation notebook](noteboo
 The earlier [`RECORD.md`](RECORD.md) (which crowned "best methods" *before* this benchmark) is
 kept for provenance but is **superseded** by the investigation.
 
+## Follow-up: gradient-trained signal generators (Oct 2026)
+
+v3 *evolves* its signal generators with GP. Gradients beat evolution almost everywhere else, so
+what if the generators were *trained* instead? Same 16 datasets, folds and tuned baselines;
+defaults chosen on 14 *other* datasets — **[the follow-up notebook →](notebooks/methods/gradient_signal_generators.ipynb)**
+
+- **Has it been tried?** Yes, for ~35 years: training ridge units one at a time against the
+  head's residual is Cascade-Correlation (Fahlman & Lebiere, 1990); trained jointly with the
+  head, "signal generators + linear head" is simply a one-hidden-layer MLP.
+- **Better than GP: yes.** Gradient-tuning v3's own numbers helps on all 16 datasets (+0.016 AUC);
+  a jointly trained small MLP (24/20 units, v3's head width) beats v3 by **+0.030 AUC** (13/16,
+  p = 0.003) and trains ~100× faster.
+- **Better than tuned GBDTs: no.** It is level with the tuned GBDT stack on the 10 small datasets
+  (where plain logistic regression also beats that stack on 6) and still ~0.04 behind on the 6 large ones.
+- **In the GBDT stack** it adds +0.006 AUC (p = 0.002), three times v1's +0.002, but plain logistic
+  regression adds +0.005 by itself: the signal is mostly smooth structure trees approximate poorly.
+- **The head-aware idea doesn't survive gradients:** joint training beats head-aware greedy growth,
+  and v3's objective corr(g ⟂ pool, R)² turns out to be ill-posed under gradient ascent
+  (scale-invariant), which is fixed by scoring generators with the head's exact Newton gain.
+
 ## Repository layout
 
 ```
 rapidlightning/   the clean, installable core (GP engine + AOT-to-C compiler)
+  gradgen.py         the follow-up: gradient-trained / numerically-built signal generators
 benchmarks/
   gp_vs_gbdt.py      the deep, honest benchmark (tuned baselines · CV · paired significance)
-  results/           per-dataset results the investigation notebook reads
+  gradgen_vs_gp.py   the follow-up benchmark (same protocol), + gradgen_dev.py (default
+                     selection on 14 other datasets), gradgen_stats.py, gradgen_latency.py
+  results/           per-dataset (and per-fold) results the notebooks read
 notebooks/
   methods/
     rapid_lightning_investigation.ipynb   ←  THE WRITEUP — start here
+    gradient_signal_generators.ipynb      the follow-up: trained, not evolved, generators
     rapid_lightning_v3.ipynb     head-aware GP (the "signal-generator" objective)
     northside.ipynb              v4 gated GP + XGBoost hybrid
   foundations/
@@ -77,6 +103,7 @@ notebooks/
 demos/            early illustrative notebooks — NOTE: their speed comparisons predate the
                   honest benchmark and used XGBoost's slow Python path; see the investigation
                   for the fair, compiled-vs-compiled story
+tests/            gradient checks + C↔Python agreement for rapidlightning.gradgen
 RECORD.md         early "best methods" account — superseded by the investigation
 README.md         you are here
 ```
