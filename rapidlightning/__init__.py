@@ -9,6 +9,10 @@ dependency-free C `.so` predicting in tens of nanoseconds.
 A clean GP classifier + AOT-to-C compiler. For the honest benchmark — it does
 not outperform tuned gradient-boosted trees — see
 notebooks/methods/rapid_lightning_investigation.ipynb.
+
+The follow-up — signal generators *trained* by gradient instead of evolved —
+lives in `rapidlightning.gradgen`; results in
+notebooks/methods/gradient_signal_generators.ipynb.
 """
 from .classifier import RapidLightningClassifier
 from .forge import CompiledPredictor

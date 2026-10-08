@@ -13,6 +13,7 @@ authors = [{ name = "Ben Johnston", email = "benjohnston@gmail.com" }]
 keywords = ["machine-learning", "tabular", "genetic-programming", "edge", "tinyml", "inference", "low-latency"]
 dependencies = [
     "numpy",
+    "scipy",          # rapidlightning.gradgen: L-BFGS for the gradient-trained generators
     "scikit-learn",
 ]
 

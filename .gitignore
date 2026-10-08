@@ -15,3 +15,6 @@ dist/
 .venv/
 venv/
 .DS_Store
+
+# Benchmark scratch (pickled GP fits reused across dev runs)
+benchmarks/results/.v3cache/
